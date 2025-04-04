@@ -1,2 +1,9 @@
-client/ 
-client/ 
+client/node_modules/ 
+client/.next/ 
+client/out/ 
+client/build/ 
+client/.DS_Store 
+client/*.pem 
+client/npm-debug.log* 
+client/yarn-debug.log* 
+client/yarn-error.log* 
