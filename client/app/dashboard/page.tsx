@@ -262,7 +262,9 @@ export default function DashboardPage() {
   const displayStudentData = studentData || STUDENT_MOCK_DATA;
   const displayStaffData = staffData || STAFF_MOCK_DATA;
 
-  console.log(displayStudentData);
+
+  console.log(displayStaffData)
+
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -596,7 +598,7 @@ export default function DashboardPage() {
                   {displayStaffData.occupancy.maintenance} Maintenance
                 </p>
                 <p className="text-xs">
-                  <Link href="/rooms" className="text-primary hover:underline">
+                  <Link href="/dashboard/room" className="text-primary hover:underline">
                     View all rooms
                   </Link>
                 </p>
@@ -616,7 +618,7 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs">
                   <Link
-                    href="/students"
+                    href="/dashboard/students"
                     className="text-primary hover:underline"
                   >
                     View all students
@@ -638,7 +640,7 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs">
                   <Link
-                    href="/complaints"
+                    href="/dashboard/complaints"
                     className="text-primary hover:underline"
                   >
                     View all complaints
@@ -660,7 +662,7 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs">
                   <Link
-                    href="/payments"
+                    href="/dashboard/payments"
                     className="text-primary hover:underline"
                   >
                     View all payments
@@ -668,6 +670,42 @@ export default function DashboardPage() {
                 </p>
               </div>
             </DashboardCard>
+          </div>
+
+          {/* Students Without Room Table */}
+          <div className="mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Students Without Room</CardTitle>
+                <CardDescription>
+                  List of students currently not assigned to any room
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {displayStaffData.studentsWithoutRoom && displayStaffData.studentsWithoutRoom.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-transparent divide-y  divide-gray-200">
+                        {displayStaffData.studentsWithoutRoom.map((student) => (
+                          <tr key={student.studentId || student.name}>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-white">{student.studentId || '-'}</td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-white">{student.name}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">All students are assigned to rooms.</p>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </>
       )}

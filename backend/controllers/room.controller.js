@@ -247,6 +247,13 @@ const allocateRoom = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             res.status(404).json({ message: "Room not found" });
             return;
         }
+        console.log("room", room);
+        // Check if room is already fully occupied
+        if (room.occupied >= room.capacity || room.status === "occupied") {
+            res.status(400).json({ message: "Room is already fully occupied" });
+            console.log("Room is already fully occupied");
+            return;
+        }
         // Check if bed exists and is available
         const bed = yield bed_model_1.default.findById(bedId);
         if (!bed) {
@@ -277,6 +284,8 @@ const allocateRoom = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         yield bed_model_1.default.findByIdAndUpdate(bedId, { status: "occupied" });
         // Update student's room number
         yield user_model_1.default.findByIdAndUpdate(studentId, { roomNumber: room.roomNumber });
+        // Increment the occupied property of the room
+        yield room_model_1.default.findByIdAndUpdate(roomId, { $inc: { occupied: 1 } });
         // Check if all beds in the room are now occupied
         const availableBeds = yield bed_model_1.default.countDocuments({
             "roomId.id": roomId,

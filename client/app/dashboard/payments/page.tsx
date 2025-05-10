@@ -1,102 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  CreditCard,
-  Download,
-  FileText,
+  AlertCircle
 } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
-import paymentService from "@/services/PaymentService";
-import { toast } from "sonner";
-import { StudentPaymentData, PaymentStatus } from "./types";
+import paymentService, { StudentPaymentData, StaffPaymentData } from "@/services/PaymentService";
+import StudentPaymentsView from "./student-view";
+import StaffPaymentsView from "./staff-view";
 
-// Define payment data with proper typing
-const STUDENT_PAYMENTS_DATA: StudentPaymentData = {
-  summary: {
-    totalPaid: "₹45,000",
-    due: "₹15,000",
-    nextPayment: "₹15,000",
-    dueDate: "15 Dec 2024",
-    paymentStatus: "Due Soon",
-  },
-  transactions: [
-    {
-      id: "tx1",
-      date: "10 Aug 2024",
-      description: "Hostel Fee - First Semester",
-      amount: "₹30,000",
-      status: "Paid" as PaymentStatus, // Use the union type
-      receiptNo: "REC-2024-001",
-    },
-    {
-      id: "tx2",
-      date: "15 Sep 2024",
-      description: "Mess Fee - First Semester",
-      amount: "₹15,000",
-      status: "Paid" as PaymentStatus,
-      receiptNo: "REC-2024-002",
-    },
-  ],
-  pendingPayments: [],
-};
-
-// Helper function to get status badge
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case "Paid":
-      return (
-        <Badge variant="default">
-          <CheckCircle2 className="mr-1 h-3 w-3" /> Paid
-        </Badge>
-      );
-    case "Pending":
-      return (
-        <Badge variant="outline">
-          <Clock className="mr-1 h-3 w-3" /> Pending
-        </Badge>
-      );
-    case "Overdue":
-      return (
-        <Badge variant="destructive">
-          <AlertCircle className="mr-1 h-3 w-3" /> Overdue
-        </Badge>
-      );
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
-};
+// No hardcoded fallback data - we'll handle errors properly
 
 export default function PaymentsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [studentPaymentData, setStudentPaymentData] =
-    useState<StudentPaymentData>(STUDENT_PAYMENTS_DATA);
-  const [staffData, setStaffData] = useState(null);
   const [error, setError] = useState<string | null>(null);
+  const [studentPaymentData, setStudentPaymentData] = useState<StudentPaymentData | null>(null);
+  const [staffData, setStaffData] = useState<any | null>(null);
 
+  // Fetch payment data based on user role
   useEffect(() => {
     const fetchPaymentsData = async () => {
       try {
@@ -104,20 +26,25 @@ export default function PaymentsPage() {
         setError(null);
 
         if (user?.role === "student") {
-          const data = await paymentService.getStudentPayments();
-          setStudentPaymentData(data);
+          try {
+            const data = await paymentService.getStudentPayments();
+            setStudentPaymentData(data);
+          } catch (studentError) {
+            console.error("Error fetching student payment data:", studentError);
+            setError("Failed to load student payment data. The API might be unavailable.");
+          }
         } else {
-          const data = await paymentService.getStaffPayments();
-          setStaffData(data);
+          try {
+            const data = await paymentService.getStaffPayments();
+            setStaffData(data);
+          } catch (staffError) {
+            console.error("Error fetching staff payment data:", staffError);
+            setError("Failed to load staff payment data. The API might be unavailable.");
+          }
         }
       } catch (error) {
-        console.error("Error fetching payment data:", error);
+        console.error("General error in payment data fetching:", error);
         setError("Failed to load payment data. Please try again later.");
-
-        // Fallback to mock data if fetch fails
-        if (user?.role === "student") {
-          setStudentPaymentData(STUDENT_PAYMENTS_DATA);
-        }
       } finally {
         setLoading(false);
       }
@@ -172,321 +99,47 @@ export default function PaymentsPage() {
         </p>
       </div>
 
-      {user?.role === "student" ? (
-        <StudentPaymentsView data={studentPaymentData} />
+      {error ? (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 mr-2" />
+            <h3 className="font-medium">Error</h3>
+          </div>
+          <p className="mt-1 text-sm">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-3 text-sm bg-red-100 hover:bg-red-200 text-red-800 py-1 px-3 rounded"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center">
+            <div className="h-10 w-10 border-4 border-t-primary rounded-full animate-spin mb-3"></div>
+            <p className="text-muted-foreground">Loading payment data...</p>
+          </div>
+        </div>
+      ) : user?.role === "student" ? (
+        studentPaymentData ? (
+          <StudentPaymentsView data={studentPaymentData} />
+        ) : (
+          <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-md p-4">
+            <p>No payment data found. Please contact the administrator.</p>
+          </div>
+        )
       ) : (
-        <StaffPaymentsView data={staffData} />
+        staffData ? (
+          <StaffPaymentsView data={staffData} />
+        ) : (
+          <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-md p-4">
+            <p>No payment data found. Please check the system configuration.</p>
+          </div>
+        )
       )}
     </div>
   );
 }
 
-function StudentPaymentsView({ data }: { data: StudentPaymentData }) {
-  const [activeTab, setActiveTab] = useState("history");
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState(data.summary.nextPayment);
-  const [paymentMethod, setPaymentMethod] = useState("credit-card");
-
-  // Handle payment submission
-  const handlePayment = async () => {
-    try {
-      setIsProcessing(true);
-
-      // Call payment service to make payment
-      await paymentService.makePayment({
-        amount: paymentAmount,
-        description: "Hostel Fee Payment",
-        paymentMethod: paymentMethod,
-      });
-
-      // Show success message
-      toast.message("Payment Successful", {
-        description: `Your payment of ${paymentAmount} has been processed successfully.`,
-      });
-
-      // Close modal and refresh page
-      setShowPaymentModal(false);
-      window.location.reload();
-    } catch (error) {
-      console.error("Payment failed:", error);
-      toast.message("Payment Failed", {
-        description:
-          "There was an error processing your payment. Please try again.",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Handle receipt download
-  const handleDownloadReceipt = async (receiptNo: string) => {
-    try {
-      const receiptBlob = await paymentService.getReceipt(receiptNo);
-
-      // Create download link
-      const url = window.URL.createObjectURL(receiptBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Receipt-${receiptNo}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-
-      // Clean up
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error("Error downloading receipt:", error);
-      toast.message("Download Failed", {
-        description: "Failed to download receipt. Please try again later.",
-      });
-    }
-  };
-
-  return (
-    <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.summary.totalPaid}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Amount Due</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.summary.due}</div>
-            {data.summary.due !== "₹0" && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Due by {data.summary.dueDate}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Next Payment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.summary.nextPayment}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Due on {data.summary.dueDate}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              {getStatusBadge(data.summary.paymentStatus)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex justify-end">
-        <Button onClick={() => setShowPaymentModal(true)}>
-          <CreditCard className="mr-2 h-4 w-4" />
-          Make Payment
-        </Button>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="history">Payment History</TabsTrigger>
-          <TabsTrigger value="pending">Pending Payments</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="history" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment History</CardTitle>
-              <CardDescription>
-                View your payment history and download receipts
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.transactions.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Receipt</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.transactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{transaction.date}</TableCell>
-                        <TableCell>{transaction.description}</TableCell>
-                        <TableCell>{transaction.amount}</TableCell>
-                        <TableCell>
-                          {getStatusBadge(transaction.status)}
-                        </TableCell>
-                        <TableCell>
-                          {transaction.status === "Paid" &&
-                            transaction.receiptNo && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  handleDownloadReceipt(transaction.receiptNo!)
-                                }
-                              >
-                                <Download className="h-4 w-4 mr-1" />
-                                Receipt
-                              </Button>
-                            )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="rounded-full bg-muted p-3">
-                    <FileText className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="mt-4 text-lg font-semibold">
-                    No payment history
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground max-w-xs">
-                    You haven&apos;t made any payments yet.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="pending" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending Payments</CardTitle>
-              <CardDescription>
-                View your upcoming and pending payments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.pendingPayments.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.pendingPayments.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell>{payment.dueDate}</TableCell>
-                        <TableCell>{payment.description}</TableCell>
-                        <TableCell>{payment.amount}</TableCell>
-                        <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setPaymentAmount(payment.amount);
-                              setShowPaymentModal(true);
-                            }}
-                          >
-                            Pay Now
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="rounded-full bg-muted p-3">
-                    <CheckCircle2 className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="mt-4 text-lg font-semibold">
-                    No pending payments
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground max-w-xs">
-                    You don&apos;t have any pending payments at the moment.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Payment Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-black rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Make Payment</h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Amount</label>
-                <input
-                  type="text"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Payment Method
-                </label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="credit-card">Credit Card</option>
-                  <option value="debit-card">Debit Card</option>
-                  <option value="net-banking">Net Banking</option>
-                  <option value="upi">UPI</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowPaymentModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handlePayment} disabled={isProcessing}>
-                {isProcessing ? (
-                  <>
-                    <span className="animate-spin mr-2">⟳</span> Processing...
-                  </>
-                ) : (
-                  "Pay Now"
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-function StaffPaymentsView({ data }: { data: any }) {
-  return <div>Staff Payments View</div>;
-}
+// This file now uses the separate StudentPaymentsView and StaffPaymentsView components
+// from their respective files (student-view.tsx and staff-view.tsx)

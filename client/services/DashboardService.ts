@@ -66,6 +66,11 @@ export interface StudentDashboardData {
   notifications: Notification[];
 }
 
+export interface StudentWithoutRoom {
+  studentId: string;
+  name: string;
+}
+
 export interface StaffDashboardData {
   occupancy: {
     total: number;
@@ -96,6 +101,7 @@ export interface StaffDashboardData {
   };
   notifications: Notification[];
   recentActivities?: RecentActivity[];
+  studentsWithoutRoom: StudentWithoutRoom[];
 }
 
 // Dashboard service functions

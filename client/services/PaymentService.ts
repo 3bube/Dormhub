@@ -9,7 +9,7 @@ export interface PaymentTransaction {
   date: string;
   description: string;
   amount: string;
-  status: "Paid" | "Pending" | "Overdue";
+  status: string;
   receiptNo?: string;
   studentName?: string;
   roomNumber?: string;
@@ -47,7 +47,7 @@ export interface StaffPaymentData {
 
 // Payment service functions
 const paymentService = {
-  // Get student payment data
+  // Get student payment data - compatible with the backend API
   getStudentPayments: async (): Promise<StudentPaymentData> => {
     try {
       const response = await axios.get(`${API_URL}/payments/student`);
@@ -79,7 +79,7 @@ const paymentService = {
             amount: "₹25,000",
             status: "Paid",
             receiptNo: "RCPT-2023-003",
-          },
+        },
           {
             id: "t3",
             date: "15 Apr 2024",
@@ -102,85 +102,90 @@ const paymentService = {
     }
   },
 
-  // Get staff payment data
+  // Get staff payment data - compatible with both real API and mock data
   getStaffPayments: async (): Promise<StaffPaymentData> => {
     try {
-      const response = await axios.get(`${API_URL}/payments/staff`);
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching staff payments:", error);
-      // Return mock data as fallback
+      // Get payments from API
+      const response = await axios.get(`${API_URL}/payments`);
+      const allPayments = Array.isArray(response.data) ? response.data : [];
+      
+      // Calculate payment statistics
+      const paidPayments = allPayments.filter(p => p && p.status === 'paid');
+      const overduePayments = allPayments.filter(p => p && p.status === 'overdue');
+      const pendingOnlyPayments = allPayments.filter(p => p && p.status === 'pending');
+      
+      // Calculate totals with proper number conversion
+      const totalCollected = paidPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+      const pendingAmount = pendingOnlyPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+      const dueAmount = overduePayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+      
+      // Calculate percentage
+      const totalAmount = totalCollected + pendingAmount + dueAmount;
+      const percentageCollected = totalAmount > 0 ? Math.round((totalCollected / totalAmount) * 100) : 0;
+      
+      // Format recent transactions (paid payments)
+      const recentTransactions = paidPayments
+        .sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        })
+        .slice(0, 10) // Get only 10 most recent transactions
+        .map(payment => ({
+          id: payment._id || payment.id || `payment-${Date.now()}`,
+          date: payment.createdAt ? new Date(payment.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+          description: payment.description || 'Payment',
+          amount: `₹${(Number(payment.amount) || 0).toLocaleString()}`,
+          status: capitalizeFirstLetter(payment.status || 'paid'),
+          studentName: payment.studentName || (payment.student ? payment.student.name : 'Unknown'),
+          roomNumber: payment.roomNumber || (payment.student ? payment.student.roomNumber : 'N/A'),
+          receiptNo: payment.receiptNo || '',
+          paymentMethod: payment.paymentMethod || 'Online',
+        }));
+      
+      // Combine pending and overdue payments
+      const allPendingPayments = [...pendingOnlyPayments, ...overduePayments];
+      const formattedPendingPayments = allPendingPayments
+        .map(payment => ({
+          id: payment._id || payment.id || `pending-${Date.now()}`,
+          date: payment.createdAt ? new Date(payment.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+          description: payment.description || 'Pending Payment',
+          amount: `₹${(Number(payment.amount) || 0).toLocaleString()}`,
+          status: capitalizeFirstLetter(payment.status || 'pending'),
+          studentName: payment.studentName || (payment.student ? payment.student.name : 'Unknown'),
+          roomNumber: payment.roomNumber || (payment.student ? payment.student.roomNumber : 'N/A'),
+          dueDate: payment.dueDate ? new Date(payment.dueDate).toLocaleDateString() : new Date().toLocaleDateString(),
+          reminders: payment.reminders || 0,
+        }));
+      
       return {
         summary: {
-          totalCollected: "₹2,75,000",
-          pendingAmount: "₹50,000",
-          dueAmount: "₹3,25,000",
-          percentageCollected: "84.6%",
+          totalCollected: `₹${totalCollected.toLocaleString()}`,
+          pendingAmount: `₹${pendingAmount.toLocaleString()}`,
+          dueAmount: `₹${dueAmount.toLocaleString()}`,
+          percentageCollected: `${percentageCollected}%`,
         },
-        recentTransactions: [
-          {
-            id: "t1",
-            date: "12 Oct 2024",
-            studentName: "John Student",
-            roomNumber: "A-101",
-            description: "Hostel Fee - Term 1",
-            amount: "₹25,000",
-            status: "Paid",
-            paymentMethod: "Online",
-          },
-          {
-            id: "t2",
-            date: "11 Oct 2024",
-            studentName: "Mary Johnson",
-            roomNumber: "A-102",
-            description: "Hostel Fee - Term 1",
-            amount: "₹25,000",
-            status: "Paid",
-            paymentMethod: "Bank Transfer",
-          },
-          {
-            id: "t3",
-            date: "10 Oct 2024",
-            studentName: "Robert Williams",
-            roomNumber: "B-201",
-            description: "Hostel Fee - Term 1",
-            amount: "₹25,000",
-            status: "Paid",
-            paymentMethod: "Cash",
-          },
-        ],
-        pendingPayments: [
-          {
-            id: "p1",
-            date: "15 Oct 2024",
-            dueDate: "15 Oct 2024",
-            studentName: "Jane Smith",
-            roomNumber: "B-202",
-            description: "Hostel Fee - Term 1",
-            amount: "₹25,000",
-            status: "Pending",
-            reminders: 2,
-          },
-          {
-            id: "p2",
-            date: "15 Oct 2024",
-            dueDate: "15 Oct 2024",
-            studentName: "Michael Brown",
-            roomNumber: "C-101",
-            description: "Hostel Fee - Term 1",
-            amount: "₹25,000",
-            status: "Pending",
-            reminders: 1,
-          },
-        ],
+        recentTransactions: recentTransactions,
+        pendingPayments: formattedPendingPayments,
       };
+    } catch (error) {
+      console.error("Error fetching staff payments:", error);
+      throw error;
     }
   },
 
   // Make a payment
-  makePayment: async (paymentData: { amount: string; description: string; paymentMethod: string }): Promise<void> => {
+  makePayment: async (paymentData: {
+    amount: number;
+    description: string;
+    paymentMethod: string;
+  }): Promise<void> => {
     try {
-      await axios.post(`${API_URL}/payments/pay`, paymentData);
+      await axios.post(`${API_URL}/payments`, {
+        ...paymentData,
+        date: new Date().toISOString(),
+      });
+      return Promise.resolve();
     } catch (error) {
       console.error("Error making payment:", error);
       throw error;
@@ -191,7 +196,7 @@ const paymentService = {
   getReceipt: async (receiptNo: string): Promise<Blob> => {
     try {
       const response = await axios.get(`${API_URL}/payments/receipt/${receiptNo}`, {
-        responseType: 'blob'
+        responseType: 'blob',
       });
       return response.data;
     } catch (error) {
@@ -201,9 +206,14 @@ const paymentService = {
   },
 
   // Send payment reminder to a student
-  sendPaymentReminder: async (reminderData: { studentId: string; message: string }): Promise<void> => {
+  sendPaymentReminder: async (reminderData: {
+    studentId: string;
+    message: string;
+    paymentId: string;
+  }): Promise<void> => {
     try {
-      await axios.post(`${API_URL}/payments/remind`, reminderData);
+      await axios.post(`${API_URL}/payments/send-reminders`, reminderData);
+      return Promise.resolve();
     } catch (error) {
       console.error("Error sending payment reminder:", error);
       throw error;
@@ -211,14 +221,59 @@ const paymentService = {
   },
 
   // Record a payment (for staff)
-  recordPayment: async (paymentId: string): Promise<void> => {
+  recordPayment: async (paymentData: {
+    studentId: string;
+    amount: number;
+    description: string;
+    paymentMethod: string;
+    receiptNo?: string;
+  }): Promise<void> => {
     try {
-      await axios.post(`${API_URL}/payments/record/${paymentId}`);
+      await axios.post(`${API_URL}/payments/record`, paymentData);
+      return Promise.resolve();
     } catch (error) {
       console.error("Error recording payment:", error);
       throw error;
     }
   },
+
+  // Get fee structure
+  getFeeStructure: async (): Promise<any> => {
+    try {
+      const response = await axios.get(`${API_URL}/payments/fee-structure`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching fee structure:", error);
+      throw error;
+    }
+  },
 };
+
+// Helper function to capitalize first letter
+function capitalizeFirstLetter(string: string): string {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+// Helper function to determine payment status
+function getPaymentStatus(pendingPayments: any[]): string {
+  if (pendingPayments.length === 0) return "All Paid";
+
+  const overduePayments = pendingPayments.filter(p => 
+    p.status === 'overdue' || 
+    (p.status === 'pending' && new Date(p.dueDate) < new Date())
+  );
+
+  if (overduePayments.length > 0) return "Overdue";
+
+  const soonDuePayments = pendingPayments.filter(p => {
+    const dueDate = new Date(p.dueDate);
+    const today = new Date();
+    const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays <= 7;
+  });
+
+  if (soonDuePayments.length > 0) return "Due Soon";
+  return "Upcoming";
+}
 
 export default paymentService;

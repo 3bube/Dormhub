@@ -338,6 +338,26 @@ export const getStaffDashboard = async (
       },
     ];
 
+    // Find all students
+    type StudentProjection = { _id: any; studentId?: string; name: string };
+
+    const allStudents = await User.find(
+      { role: "student" },
+      { _id: 1, studentId: 1, name: 1 }
+    ) as unknown as StudentProjection[];
+
+    // Find all active allocations
+    const activeAllocations = await Allocation.find({ active: true }, { student: 1 });
+
+    const allocatedStudentIds = new Set(activeAllocations.map(a => a.student.toString()));
+
+    // Students without room = those not in allocatedStudentIds
+    const studentsWithoutRoom = allStudents.filter(s => !allocatedStudentIds.has(s._id.toString())).map(s => ({
+      studentId: s._id,
+      name: s.name
+    }));
+
+
     // Format the response data
     const dashboardData = {
       occupancy: {
@@ -375,6 +395,7 @@ export const getStaffDashboard = async (
         type: notification.type || "info",
       })),
       recentActivities,
+      studentsWithoutRoom,
     };
 
     res.json(dashboardData);

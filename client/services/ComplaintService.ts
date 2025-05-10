@@ -38,13 +38,92 @@ export interface ComplaintStats {
 }
 
 export interface ComplaintsData {
-  filter(arg0: (complaint: any) => boolean): unknown;
-  status: string;
-  length: number;
+  status?: string;
+  length?: number;
   complaints: Complaint[];
   stats: ComplaintStats;
   categories?: Record<string, number>;
 }
+
+// Define mock data for complaints
+const STUDENT_COMPLAINTS_DATA: ComplaintsData = {
+  complaints: [
+    {
+      id: "c1",
+      title: "Flickering Light in Room",
+      category: "Electrical",
+      description:
+        "The main light in my room has been flickering for the past two days.",
+      status: "in-progress",
+      priority: "medium",
+      createdAt: "10 Oct 2024",
+      assignedTo: "Maintenance Team",
+      responses: [
+        {
+          id: "r1",
+          responder: "John Maintenance",
+          message: "We'll check this issue tomorrow morning.",
+          timestamp: "11 Oct 2024, 10:30 AM",
+        },
+      ],
+    },
+    {
+      id: "c2",
+      title: "Water Leakage from Bathroom",
+      category: "Plumbing",
+      description: "There's water leaking from the bathroom sink pipe.",
+      status: "resolved",
+      priority: "high",
+      createdAt: "5 Oct 2024",
+      assignedTo: "Maintenance Team",
+      responses: [
+        {
+          id: "r1",
+          responder: "John Maintenance",
+          message: "We'll check this issue immediately.",
+          timestamp: "5 Oct 2024, 2:30 PM",
+        },
+        {
+          id: "r2",
+          responder: "John Maintenance",
+          message:
+            "The issue has been fixed. The pipe was loose and has been tightened.",
+          timestamp: "5 Oct 2024, 4:45 PM",
+        },
+      ],
+    },
+  ],
+  stats: {
+    total: 5,
+    pending: 1,
+    inProgress: 2,
+    resolved: 2,
+  },
+};
+
+const STAFF_COMPLAINTS_DATA: ComplaintsData = {
+  complaints: [
+    ...STUDENT_COMPLAINTS_DATA.complaints,
+    {
+      id: "c6",
+      title: "Broken Window",
+      category: "Maintenance",
+      description: "The window in room B-204 is broken and needs replacement.",
+      status: "pending",
+      priority: "high",
+      createdAt: "11 Oct 2024",
+      studentName: "David Smith",
+      roomNumber: "B-204",
+      responses: [],
+    },
+  ],
+  stats: {
+    total: 7,
+    pending: 2,
+    inProgress: 3,
+    resolved: 2,
+  },
+};
 
 // Complaint service functions
 const complaintService = {
@@ -52,74 +131,29 @@ const complaintService = {
   getAllComplaints: async (): Promise<ComplaintsData> => {
     try {
       const response = await axios.get(`${API_URL}/complaints`);
-      return response.data;
+      
+      // Transform API response into expected format
+      const complaints = response.data;
+      
+      // Calculate stats
+      const pending = complaints.filter(c => c.status === "pending").length;
+      const inProgress = complaints.filter(c => c.status === "in-progress").length;
+      const resolved = complaints.filter(c => c.status === "resolved").length;
+      const closed = complaints.filter(c => c.status === "closed").length;
+      
+      return {
+        complaints: complaints,
+        stats: {
+          total: complaints.length,
+          pending: pending,
+          inProgress: inProgress,
+          resolved: resolved + closed
+        }
+      };
     } catch (error) {
       console.error("Error fetching all complaints:", error);
       // Return mock data as fallback
-      const mockData = {
-        length: 2,
-        status: "success",
-        complaints: [
-          {
-            id: "c1",
-            title: "Flickering Light in Room",
-            category: "Electrical",
-            description:
-              "The main light in my room has been flickering for the past two days.",
-            status: "in-progress",
-            priority: "medium",
-            createdAt: "10 Oct 2024",
-            studentName: "John Doe",
-            roomNumber: "A-101",
-            assignedTo: "Maintenance Team",
-            responses: [
-              {
-                id: "r1",
-                responder: "John Maintenance",
-                message: "We'll check this issue tomorrow morning.",
-                timestamp: "11 Oct 2024, 10:30 AM",
-              },
-            ],
-          },
-          {
-            id: "c2",
-            title: "Water Leakage from Bathroom",
-            category: "Plumbing",
-            description: "There's water leaking from the bathroom sink pipe.",
-            status: "resolved",
-            priority: "high",
-            createdAt: "5 Oct 2024",
-            studentName: "Jane Smith",
-            roomNumber: "B-202",
-            assignedTo: "Maintenance Team",
-            responses: [
-              {
-                id: "r1",
-                responder: "John Maintenance",
-                message: "We'll check this issue immediately.",
-                timestamp: "5 Oct 2024, 2:30 PM",
-              },
-              {
-                id: "r2",
-                responder: "John Maintenance",
-                message:
-                  "The issue has been fixed. The pipe was loose and has been tightened.",
-                timestamp: "5 Oct 2024, 4:45 PM",
-              },
-            ],
-          },
-        ],
-        stats: {
-          total: 2,
-          pending: 0,
-          inProgress: 1,
-          resolved: 1,
-        },
-        filter: function (predicate: (complaint: any) => boolean) {
-          return this.complaints.filter(predicate);
-        },
-      };
-      // return mockData;
+      return STAFF_COMPLAINTS_DATA;
     }
   },
 
@@ -127,74 +161,29 @@ const complaintService = {
   getUserComplaints: async (): Promise<ComplaintsData> => {
     try {
       const response = await axios.get(`${API_URL}/complaints/user`);
-
-      console.log(response.data);
-      return response.data;
+      
+      // Transform API response into expected format
+      const complaints = response.data;
+      
+      // Calculate stats
+      const pending = complaints.filter(c => c.status === "pending").length;
+      const inProgress = complaints.filter(c => c.status === "in-progress").length;
+      const resolved = complaints.filter(c => c.status === "resolved").length;
+      const closed = complaints.filter(c => c.status === "closed").length;
+      
+      return {
+        complaints: complaints,
+        stats: {
+          total: complaints.length,
+          pending: pending,
+          inProgress: inProgress,
+          resolved: resolved + closed
+        }
+      };
     } catch (error) {
       console.error("Error fetching user complaints:", error);
       // Return mock data as fallback
-      const mockData = {
-        length: 2,
-        status: "success",
-        complaints: [
-          {
-            id: "c1",
-            title: "Flickering Light in Room",
-            category: "Electrical",
-            description:
-              "The main light in my room has been flickering for the past two days.",
-            status: "in-progress",
-            priority: "medium",
-            createdAt: "10 Oct 2024",
-            studentName: "Current User",
-            assignedTo: "Maintenance Team",
-            responses: [
-              {
-                id: "r1",
-                responder: "John Maintenance",
-                message: "We'll check this issue tomorrow morning.",
-                timestamp: "11 Oct 2024, 10:30 AM",
-              },
-            ],
-          },
-          {
-            id: "c2",
-            title: "Water Leakage from Bathroom",
-            category: "Plumbing",
-            description: "There's water leaking from the bathroom sink pipe.",
-            status: "resolved",
-            priority: "high",
-            createdAt: "5 Oct 2024",
-            studentName: "Current User",
-            assignedTo: "Maintenance Team",
-            responses: [
-              {
-                id: "r1",
-                responder: "John Maintenance",
-                message: "We'll check this issue immediately.",
-                timestamp: "5 Oct 2024, 2:30 PM",
-              },
-              {
-                id: "r2",
-                responder: "John Maintenance",
-                message:
-                  "The issue has been fixed. The pipe was loose and has been tightened.",
-                timestamp: "5 Oct 2024, 4:45 PM",
-              },
-            ],
-          },
-        ],
-        stats: {
-          total: 2,
-          pending: 0,
-          inProgress: 1,
-          resolved: 1,
-        },
-        filter: function (predicate: (complaint: any) => boolean) {
-          return this.complaints.filter(predicate);
-        },
-      };
-      // return mockData;
+      return STUDENT_COMPLAINTS_DATA;
     }
   },
 
@@ -232,36 +221,39 @@ const complaintService = {
   addResponse: async (
     complaintId: string,
     responseData: Partial<ComplaintResponse>
-  ): Promise<ComplaintResponse> => {
+  ): Promise<Complaint> => {
     try {
       const response = await axios.post(
-        `${API_URL}/complaints/${complaintId}/responses`,
+        `${API_URL}/complaints/${complaintId}/comments`,
         responseData
       );
       return response.data;
     } catch (error) {
-      console.error("Error adding response:", error);
+      console.error("Error adding response to complaint:", error);
+      throw error;
+    }
+  },
+
+  // Get complaint by ID
+  getComplaintById: async (id: string): Promise<Complaint> => {
+    try {
+      const response = await axios.get(`${API_URL}/complaints/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching complaint ID ${id}:`, error);
       throw error;
     }
   },
 
   // Get complaint categories
-  getCategories: async (): Promise<string[]> => {
+  getComplaintCategories: async (): Promise<string[]> => {
     try {
       const response = await axios.get(`${API_URL}/complaints/categories`);
       return response.data;
     } catch (error) {
       console.error("Error fetching complaint categories:", error);
       // Return mock categories as fallback
-      return [
-        "Electrical",
-        "Plumbing",
-        "Network",
-        "Housekeeping",
-        "Resident Issue",
-        "Maintenance",
-        "Mess",
-      ];
+      return ["Electrical", "Plumbing", "Network", "Housekeeping", "Maintenance"];
     }
   },
 };

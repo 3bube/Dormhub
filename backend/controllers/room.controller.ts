@@ -310,6 +310,16 @@ export const allocateRoom = async (
       return;
     }
 
+
+    console.log("room", room)
+
+    // Check if room is already fully occupied
+    if (room.occupied >= room.capacity || room.status === "occupied") {
+      res.status(400).json({ message: "Room is already fully occupied" });
+      console.log("Room is already fully occupied");
+      return;
+    }
+
     // Check if bed exists and is available
     const bed = await Bed.findById(bedId);
     if (!bed) {
@@ -345,6 +355,9 @@ export const allocateRoom = async (
 
     // Update student's room number
     await User.findByIdAndUpdate(studentId, { roomNumber: room.roomNumber });
+
+    // Increment the occupied property of the room
+    await Room.findByIdAndUpdate(roomId, { $inc: { occupied: 1 } });
 
     // Check if all beds in the room are now occupied
     const availableBeds = await Bed.countDocuments({

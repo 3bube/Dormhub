@@ -56,11 +56,11 @@ export function DashboardSidebar() {
       href: "/dashboard/complaints",
       icon: FileText,
     },
-    {
-      title: "Payments",
-      href: "/dashboard/payments",
-      icon: DollarSign,
-    },
+    // {
+    //   title: "Payments",
+    //   href: "/dashboard/payments",
+    //   icon: DollarSign,
+    // },
     // {
     //   title: "Resource Requests",
     //   href: "/dashboard/resources",
@@ -94,11 +94,11 @@ export function DashboardSidebar() {
       href: "/dashboard/complaints",
       icon: FileText,
     },
-    {
-      title: "Payment Management",
-      href: "/dashboard/payments",
-      icon: DollarSign,
-    },
+    // {
+    //   title: "Payment Management",
+    //   href: "/dashboard/payments",
+    //   icon: DollarSign,
+    // },
     // {
     //   title: "Resource Management",
     //   href: "/dashboard/resources",
@@ -164,7 +164,7 @@ export function DashboardSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
+              {/* <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
                   isActive={pathname === "/dashboard/settings"}
@@ -175,7 +175,7 @@ export function DashboardSidebar() {
                     <span>Settings</span>
                   </Link>
                 </SidebarMenuButton>
-              </SidebarMenuItem>
+              </SidebarMenuItem> */}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

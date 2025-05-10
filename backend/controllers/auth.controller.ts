@@ -23,6 +23,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password, role } = req.body;
 
+    
+
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {

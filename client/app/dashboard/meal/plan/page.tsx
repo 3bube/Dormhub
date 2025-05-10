@@ -58,6 +58,7 @@ export default function MealPlanManagementPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Form state
@@ -146,32 +147,53 @@ export default function MealPlanManagementPage() {
         dinner: [],
       },
     });
+    setSelectedPlan(null);
+  };
+
+  const loadPlanForEditing = (plan) => {
+    setSelectedPlan(plan);
+    setFormData({
+      name: plan.name || "",
+      description: plan.description || "",
+      price: plan.price || 0,
+      daysAvailable: plan.daysAvailable || [],
+      meals: {
+        breakfast: plan.meals?.breakfast || [],
+        lunch: plan.meals?.lunch || [],
+        dinner: plan.meals?.dinner || [],
+      },
+    });
+    setShowEditDialog(true);
+  };
+
+  const validateFormData = () => {
+    if (!formData.name || !formData.description || formData.price <= 0) {
+      toast.error("Please fill in all required fields");
+      return false;
+    }
+    
+    if (formData.daysAvailable.length === 0) {
+      toast.error("Please select at least one day");
+      return false;
+    }
+    
+    if (formData.meals.breakfast.length === 0 || 
+        formData.meals.lunch.length === 0 || 
+        formData.meals.dinner.length === 0) {
+      toast.error("Please select at least one meal for each meal type");
+      return false;
+    }
+
+    return true;
   };
 
   const handleCreatePlan = async () => {
+    if (!validateFormData()) {
+      return;
+    }
+
     setIsCreating(true);
     try {
-      // Validate form data
-      if (!formData.name || !formData.description || formData.price <= 0) {
-        toast.error("Please fill in all required fields");
-        setIsCreating(false);
-        return;
-      }
-      
-      if (formData.daysAvailable.length === 0) {
-        toast.error("Please select at least one day");
-        setIsCreating(false);
-        return;
-      }
-      
-      if (formData.meals.breakfast.length === 0 || 
-          formData.meals.lunch.length === 0 || 
-          formData.meals.dinner.length === 0) {
-        toast.error("Please select at least one meal for each meal type");
-        setIsCreating(false);
-        return;
-      }
-
       const mealPlanData = {
         name: formData.name,
         description: formData.description,
@@ -196,6 +218,42 @@ export default function MealPlanManagementPage() {
     } catch (error) {
       console.error("Error creating meal plan:", error);
       toast.error("Failed to create meal plan. Please try again.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleUpdatePlan = async () => {
+    if (!validateFormData() || !selectedPlan) {
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const mealPlanData = {
+        name: formData.name,
+        description: formData.description,
+        price: Number(formData.price),
+        daysAvailable: formData.daysAvailable,
+        meals: {
+          breakfast: formData.meals.breakfast,
+          lunch: formData.meals.lunch,
+          dinner: formData.meals.dinner,
+        },
+      };
+
+      console.log("Updating meal plan with data:", mealPlanData);
+      await mealService.updateMealPlan(selectedPlan._id, mealPlanData);
+      toast.success("Meal plan updated successfully");
+      setShowEditDialog(false);
+      resetForm();
+      
+      // Refresh meal plans
+      const plansData = await mealService.getAllMealPlans();
+      setMealPlans(plansData);
+    } catch (error) {
+      console.error("Error updating meal plan:", error);
+      toast.error("Failed to update meal plan. Please try again.");
     } finally {
       setIsCreating(false);
     }
@@ -301,9 +359,7 @@ export default function MealPlanManagementPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            router.push(`/dashboard/meal/plan/${plan._id}`);
-                          }}
+                          onClick={() => loadPlanForEditing(plan)}
                         >
                           <Pencil className="h-4 w-4 mr-1" />
                           Edit
@@ -330,7 +386,10 @@ export default function MealPlanManagementPage() {
       </Card>
 
       {/* Create Meal Plan Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) resetForm();
+      }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Meal Plan</DialogTitle>
@@ -486,6 +545,145 @@ export default function MealPlanManagementPage() {
                 </>
               ) : (
                 "Delete Plan"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Meal Plan Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        setShowEditDialog(open);
+        if (!open) resetForm();
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Meal Plan</DialogTitle>
+            <DialogDescription>
+              Update the details of this meal plan
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Plan Name</Label>
+                <Input
+                  id="edit-name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="Enter plan name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-price">Price ($)</Label>
+                <Input
+                  id="edit-price"
+                  name="price"
+                  type="number"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder="Enter plan description"
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Days Available</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {daysOfWeek.map((day) => (
+                  <div key={`edit-day-${day}`} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`edit-day-${day}`}
+                      checked={formData.daysAvailable.includes(day)}
+                      onCheckedChange={() => handleDayToggle(day)}
+                    />
+                    <Label htmlFor={`edit-day-${day}`} className="capitalize">
+                      {day}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Label>Meals</Label>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Breakfast</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {meals
+                      .filter((meal) => meal.type === "breakfast")
+                      .map((meal) => (
+                        <div key={`edit-breakfast-${meal._id}`} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-breakfast-${meal._id}`}
+                            checked={formData.meals.breakfast.includes(meal._id)}
+                            onCheckedChange={() => handleMealSelection("breakfast", meal._id)}
+                          />
+                          <Label htmlFor={`edit-breakfast-${meal._id}`}>{meal.name}</Label>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Lunch</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {meals
+                      .filter((meal) => meal.type === "lunch")
+                      .map((meal) => (
+                        <div key={`edit-lunch-${meal._id}`} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-lunch-${meal._id}`}
+                            checked={formData.meals.lunch.includes(meal._id)}
+                            onCheckedChange={() => handleMealSelection("lunch", meal._id)}
+                          />
+                          <Label htmlFor={`edit-lunch-${meal._id}`}>{meal.name}</Label>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Dinner</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {meals
+                      .filter((meal) => meal.type === "dinner")
+                      .map((meal) => (
+                        <div key={`edit-dinner-${meal._id}`} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-dinner-${meal._id}`}
+                            checked={formData.meals.dinner.includes(meal._id)}
+                            onCheckedChange={() => handleMealSelection("dinner", meal._id)}
+                          />
+                          <Label htmlFor={`edit-dinner-${meal._id}`}>{meal.name}</Label>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdatePlan} disabled={isCreating}>
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                "Update Plan"
               )}
             </Button>
           </DialogFooter>

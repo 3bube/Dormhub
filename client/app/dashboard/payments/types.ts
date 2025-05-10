@@ -1,14 +1,26 @@
-export type PaymentStatus = "Paid" | "Pending" | "Overdue";
+// Use string instead of specific enum to match PaymentService types
+export type PaymentStatus = string;
 
+// Base payment transaction interface
 export interface PaymentTransaction {
   id: string;
   date: string;
   description: string;
   amount: string;
-  status: PaymentStatus;
+  status: string;
   receiptNo?: string;
+  dueDate?: string;
+  paymentMethod?: string;
 }
 
+// Extended transaction for staff view (includes student info)
+export interface StaffPaymentTransaction extends PaymentTransaction {
+  studentName: string;
+  roomNumber: string;
+  reminders?: number;
+}
+
+// Student payment data structure
 export interface StudentPaymentData {
   summary: {
     totalPaid: string;
@@ -18,5 +30,26 @@ export interface StudentPaymentData {
     paymentStatus: string;
   };
   transactions: PaymentTransaction[];
-  pendingPayments: any[]; // Consider defining a more specific type for pending payments
+  pendingPayments: PaymentTransaction[];
+}
+
+// Staff payment data structure
+export interface StaffPaymentData {
+  summary: {
+    totalCollected: string;
+    pendingAmount: string;
+    dueAmount: string;
+    percentageCollected: string;
+  };
+  recentTransactions: StaffPaymentTransaction[];
+  pendingPayments: StaffPaymentTransaction[];
+}
+
+// Fee structure interface
+export interface FeeStructure {
+  hostelFee: string;
+  messFee: string;
+  securityDeposit: string;
+  utilityFee: string;
+  miscellaneous: string;
 }

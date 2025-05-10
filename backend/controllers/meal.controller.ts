@@ -20,6 +20,11 @@ interface IMeal {
 export const getMeals = async (req: Request, res: Response): Promise<void> => {
   try {
     const meals = await Meal.find();
+
+
+
+    console.log(meals)
+
     res.json(meals);
   } catch (error: any) {
     console.error("Get meals error:", error);

@@ -247,6 +247,15 @@ const getStaffDashboard = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 date: "2 days ago",
             },
         ];
+        const allStudents = yield user_model_1.default.find({ role: "student" }, { _id: 1, studentId: 1, name: 1 });
+        // Find all active allocations
+        const activeAllocations = yield allocation_model_1.default.find({ active: true }, { student: 1 });
+        const allocatedStudentIds = new Set(activeAllocations.map(a => a.student.toString()));
+        // Students without room = those not in allocatedStudentIds
+        const studentsWithoutRoom = allStudents.filter(s => !allocatedStudentIds.has(s._id.toString())).map(s => ({
+            studentId: s._id,
+            name: s.name
+        }));
         // Format the response data
         const dashboardData = {
             occupancy: {
@@ -284,6 +293,7 @@ const getStaffDashboard = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 type: notification.type || "info",
             })),
             recentActivities,
+            studentsWithoutRoom,
         };
         res.json(dashboardData);
     }

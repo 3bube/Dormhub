@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2 } from "lucide-react";
+import axios from "axios";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,13 +30,13 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useAuth } from "@/app/context/AuthContext";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
 // Define form validation schema
 const profileSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Please enter a valid email address").optional(),
-    phone: z.string().optional(),
-    emergencyContact: z.string().optional(),
     currentPassword: z.string().optional(),
     newPassword: z
       .string()
@@ -70,7 +71,8 @@ const profileSchema = z
 
 export default function ProfilePage() {
   const [isUpdating, setIsUpdating] = useState(false);
-  const { user, updateProfile } = useAuth();
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const { user, updateUserData } = useAuth();
 
   // Initialize form with user data
   const form = useForm<z.infer<typeof profileSchema>>({
@@ -78,50 +80,93 @@ export default function ProfilePage() {
     defaultValues: {
       name: user?.name || "",
       email: user?.email || "",
-      phone: "",
-      emergencyContact: "",
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
     },
   });
 
-  // Handle form submission
-  const onSubmit = async (values: z.infer<typeof profileSchema>) => {
+  // Update form values when user data changes
+  useEffect(() => {
+    if (user) {
+      form.setValue("name", user.name || "");
+      form.setValue("email", user.email || "");
+    }
+  }, [user, form]);
+
+  // Handle profile update
+  const updateUserProfile = async (values: z.infer<typeof profileSchema>) => {
     setIsUpdating(true);
-
     try {
-      // In a real app, you would validate the current password before updating
-      // For this demo, we'll just update the profile without validation
-      const success = await updateProfile({
-        name: values.name,
-        // Other fields would be updated here
-      });
+      const response = await axios.put(
+        `${API_URL}/users/profile`,
+        { name: values.name },
+        { withCredentials: true }
+      );
 
-      if (success) {
-        toast.message("Profile updated", {
-          description: "Your profile has been updated successfully.",
+      if (response.status === 200) {
+        // Update local user data
+        updateUserData({
+          ...user,
+          name: values.name,
         });
 
-        // Reset password fields
-        form.reset({
-          ...values,
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
-      } else {
-        toast.message("Update failed", {
-          description: "Failed to update profile. Please try again.",
-        });
+        toast.success("Profile updated successfully");
+        return true;
       }
+      return false;
     } catch (error) {
-      toast.message("Error", {
-        description: "An error occurred while updating your profile.",
-      });
+      console.error("Error updating profile:", error);
+      toast.error("Failed to update profile");
+      return false;
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // Handle password change
+  const changePassword = async (values: z.infer<typeof profileSchema>) => {
+    if (!values.currentPassword || !values.newPassword) return false;
+    
+    setIsChangingPassword(true);
+    try {
+      const response = await axios.put(
+        `${API_URL}/users/password`,
+        {
+          currentPassword: values.currentPassword,
+          newPassword: values.newPassword,
+        },
+        { withCredentials: true }
+      );
+
+      if (response.status === 200) {
+        // Reset password fields
+        form.setValue("currentPassword", "");
+        form.setValue("newPassword", "");
+        form.setValue("confirmPassword", "");
+        
+        toast.success("Password changed successfully");
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      const errorMessage = error.response?.data?.message || "Failed to change password";
+      toast.error(errorMessage);
+      return false;
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  // Handle profile form submission
+  const onProfileSubmit = async (values: z.infer<typeof profileSchema>) => {
+    await updateUserProfile(values);
+  };
+
+  // Handle password form submission
+  const onPasswordSubmit = async (values: z.infer<typeof profileSchema>) => {
+    await changePassword(values);
   };
 
   const getInitials = (name: string) => {
@@ -173,7 +218,7 @@ export default function ProfilePage() {
 
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(onSubmit)}
+                onSubmit={form.handleSubmit(onProfileSubmit)}
                 className="space-y-4"
               >
                 <FormField
@@ -199,35 +244,6 @@ export default function ProfilePage() {
                         <Input {...field} disabled />
                       </FormControl>
                       <FormDescription>Email cannot be changed</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="emergencyContact"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Emergency Contact</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Phone number of a person to contact in case of emergency
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -258,7 +274,7 @@ export default function ProfilePage() {
           <CardContent>
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(onSubmit)}
+                onSubmit={form.handleSubmit(onPasswordSubmit)}
                 className="space-y-4"
               >
                 <FormField
@@ -316,11 +332,11 @@ export default function ProfilePage() {
                   )}
                 />
 
-                <Button type="submit" disabled={isUpdating} className="w-full">
-                  {isUpdating ? (
+                <Button type="submit" disabled={isChangingPassword} className="w-full">
+                  {isChangingPassword ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
+                      Changing Password...
                     </>
                   ) : (
                     "Change Password"

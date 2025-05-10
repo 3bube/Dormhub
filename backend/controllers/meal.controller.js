@@ -25,6 +25,7 @@ const user_model_1 = __importDefault(require("../models/user.model"));
 const getMeals = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const meals = yield meal_model_1.default.find();
+        console.log(meals);
         res.json(meals);
     }
     catch (error) {
