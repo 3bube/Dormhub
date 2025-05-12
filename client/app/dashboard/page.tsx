@@ -306,7 +306,7 @@ export default function DashboardPage() {
                     : "N/A"}
                 </p>
                 <p className="text-xs">
-                  <Link href="/rooms" className="text-primary hover:underline">
+                  <Link href="/dashboard/rooms" className="text-primary hover:underline">
                     View Details
                   </Link>
                 </p>
@@ -330,7 +330,7 @@ export default function DashboardPage() {
                   </p>
                 )}
                 <p className="text-xs">
-                  <Link href="/meals" className="text-primary hover:underline">
+                  <Link href="/dashboard/meals" className="text-primary hover:underline">
                     View Details
                   </Link>
                 </p>
@@ -362,7 +362,7 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs">
                   <Link
-                    href="/payments"
+                    href="/dashboard/payments"
                     className="text-primary hover:underline"
                   >
                     View Details
@@ -394,7 +394,7 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs">
                   <Link
-                    href="/complaints"
+                    href="/dashboard/complaints"
                     className="text-primary hover:underline"
                   >
                     View Details
